@@ -66,6 +66,10 @@ function getLotteryStatus(lottery: Lottery): { isOpen: boolean; countdown: strin
   }
   return { isOpen: false, countdown: "Cerrada" };
 }
+const limitCheckQuery = trpc.lottery.checkLimit.useQuery(
+  { lotteryId: 0, playType: "pale", numberCombo: "", amount: "0" },
+  { enabled: false }
+);
 
 function migrateLottery(lottery: any): Lottery {
   if (lottery.schedule) return lottery as Lottery;
@@ -516,7 +520,7 @@ export default function VenderScreen({ user }: VenderScreenProps) {
     if (selectedLotteries.length === 0) return;
     const netDeduction = calculateNetDeduction(total, userCommission);
     if (netDeduction > userCredit) { showMsg(`Credito insuficiente. Necesita: $${formatMoney(netDeduction)}`); setShowConfirmModal(false); return; }
-    
+
     // Deduct credit via API
     const newCredit = userCredit - netDeduction;
     try {
@@ -527,7 +531,7 @@ export default function VenderScreen({ user }: VenderScreenProps) {
       setShowConfirmModal(false);
       return;
     }
-    
+
     // Check for winners
     const { prize: totalPrize, details: prizeDetails } = checkWinningPlays(plays);
     let prizeMsg = "";
@@ -539,7 +543,7 @@ export default function VenderScreen({ user }: VenderScreenProps) {
         prizeMsg = ` | Premio: $${formatMoney(totalPrize)}!`;
       } catch { /* prize failed but continue */ }
     }
-    
+
     const code = generateTicketCode();
     const now = new Date();
     const date = now.toLocaleDateString();
@@ -547,7 +551,7 @@ export default function VenderScreen({ user }: VenderScreenProps) {
     const lotteryNames = selectedLotteries.map((l) => l.name).join(", ");
     const gs = JSON.parse(localStorage.getItem("loteria_groups") || "[]");
     const groupName = user.groupId ? (gs.find((g: any) => g.id === user.groupId)?.name || "") : "";
-    
+
     const ticketData: any = {
       id: Date.now(), code, userId: user.id,
       lotteryId: selectedLotteries[0].id,
@@ -558,12 +562,12 @@ export default function VenderScreen({ user }: VenderScreenProps) {
       plays: plays.map((p) => ({ ...p, id: Math.random().toString(36).substr(2, 9) })),
       terminal: user.bankNumber, seller: user.name, lottery: lotteryNames, groupName,
     };
-    
+
     try {
       const pdfDataUrl = await generatePDFDataUrl(ticketData);
       ticketData.pdfDataUrl = pdfDataUrl;
     } catch { /* PDF failed */ }
-    
+
     // Save ticket to database via tRPC
     try {
       const playList = ticketData.plays.map((p: any) => ({
@@ -588,12 +592,12 @@ export default function VenderScreen({ user }: VenderScreenProps) {
       setShowConfirmModal(false);
       return;
     }
-    
+
     logAudit({ type: "ticket_sale", userId: user.id, userName: user.name, groupId: user.groupId, amount: total, description: `Venta: ${ticketData.plays.length} jugadas por $${formatMoney(total)}`, ticketCode: code, balanceAfter: newCredit });
     if (totalPrize > 0) {
       logAudit({ type: "prize_win", userId: user.id, userName: user.name, groupId: user.groupId, amount: totalPrize, description: `Premio: $${formatMoney(totalPrize)} | ${prizeDetails.join(", ")}`, ticketCode: code, balanceAfter: newCredit + totalPrize });
     }
-    
+
     clearDraft();
     setPlays([]);
     setLastTicket(ticketData);
