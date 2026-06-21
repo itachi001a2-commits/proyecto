@@ -38,7 +38,7 @@ function isLotteryOpenNow(lottery: Lottery): boolean {
   const dayIndex = now.getDay();
   const dayKey = DAY_KEYS[dayIndex];
   const daySched = lottery.schedule?.[dayKey];
-  if (!daySched) return true; // If no schedule, assume open
+  if (!daySched) return true;
   const currentMins = now.getHours() * 60 + now.getMinutes();
   const [openH, openM] = daySched.open.split(":").map(Number);
   const [closeH, closeM] = daySched.close.split(":").map(Number);
@@ -66,10 +66,6 @@ function getLotteryStatus(lottery: Lottery): { isOpen: boolean; countdown: strin
   }
   return { isOpen: false, countdown: "Cerrada" };
 }
-const limitCheckQuery = trpc.lottery.checkLimit.useQuery(
-  { lotteryId: 0, playType: "pale", numberCombo: "", amount: "0" },
-  { enabled: false }
-);
 
 function migrateLottery(lottery: any): Lottery {
   if (lottery.schedule) return lottery as Lottery;
@@ -85,7 +81,7 @@ function migrateLottery(lottery: any): Lottery {
 }
 
 export default function VenderScreen({ user }: VenderScreenProps) {
-  // tRPC hooks
+  // tRPC hooks - TODOS los hooks deben estar aquí adentro
   const utils = trpc.useUtils();
   const userQuery = trpc.lotteryUser.byId.useQuery({ id: user.id }, { refetchInterval: 10000 });
   const updateCreditMut = trpc.lotteryUser.updateCredit.useMutation({
@@ -96,6 +92,12 @@ export default function VenderScreen({ user }: VenderScreenProps) {
   });
   const lotteryListQuery = trpc.lottery.list.useQuery();
   const prizeListQuery = trpc.prize.list.useQuery();
+
+  // ✅ MOVIDO ADENTRO DEL COMPONENTE - hook de tRPC
+  const limitCheckQuery = trpc.lottery.checkLimit.useQuery(
+    { lotteryId: 0, playType: "pale", numberCombo: "", amount: "0" },
+    { enabled: false }
+  );
 
   // Get lotteries from API
   const allLotteries: Lottery[] = (lotteryListQuery.data || []).map(migrateLottery).filter((l: Lottery) => l.active !== false);
@@ -945,5 +947,3 @@ export default function VenderScreen({ user }: VenderScreenProps) {
     </div>
   );
 }
-
-
