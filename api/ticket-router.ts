@@ -3,6 +3,9 @@ import { createRouter, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { tickets, plays } from "@db/schema";
 import { eq, desc, and } from "drizzle-orm";
+import { ticketRouter } from './ticket';
+// ...
+ticket: ticketRouter,
 
 export const ticketRouter = createRouter({
   // Create ticket with plays
